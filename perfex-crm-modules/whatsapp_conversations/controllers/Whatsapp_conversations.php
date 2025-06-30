@@ -32,13 +32,29 @@ class Whatsapp_conversations extends AdminController
                 show_error('Permission system error', 500);
             }
         }
-        
+
         // Fallback: check if user is staff
         if (function_exists('is_staff_logged_in') && !is_staff_logged_in()) {
             show_error('Access denied', 403);
         }
-        
+
         return true;
+    }
+
+    /**
+     * Get tab content via AJAX
+     */
+    public function get_tab_content($customer_id)
+    {
+        $this->check_permission('view');
+        
+        $data['customer_id'] = $customer_id;
+        $data['conversations'] = $this->whatsapp_conversations_model->get_by_customer($customer_id);
+        $data['can_create'] = has_permission('whatsapp_conversations', '', 'create') || is_admin();
+        $data['can_edit'] = has_permission('whatsapp_conversations', '', 'edit') || is_admin();
+        $data['can_delete'] = has_permission('whatsapp_conversations', '', 'delete') || is_admin();
+
+        $this->load->view('whatsapp_conversations/customer_tab', $data);
     }
 
     /**

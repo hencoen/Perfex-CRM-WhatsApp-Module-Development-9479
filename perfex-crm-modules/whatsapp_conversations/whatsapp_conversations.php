@@ -4,7 +4,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 /*
 Module Name: WhatsApp Conversations
 Description: Manage WhatsApp conversations for customers
-Version: 1.0.6
+Version: 1.0.7
 Author: Custom Module
 Requires at least: 2.3.*
 */
@@ -43,74 +43,101 @@ register_language_files(WHATSAPP_CONVERSATIONS_MODULE_NAME, [WHATSAPP_CONVERSATI
 hooks()->add_action('admin_init', 'whatsapp_conversations_module_init_menu_items');
 hooks()->add_action('app_admin_head', 'whatsapp_conversations_add_head_components');
 
-// Register customer tab hooks with proper parameter handling
-hooks()->add_action('customer_profile_tab', 'whatsapp_conversations_tab');
-hooks()->add_action('customer_profile_tab_content', 'whatsapp_conversations_tab_content');
+// Try multiple hook variations to ensure compatibility
+$hook_variations = [
+    'customer_profile_tab',
+    'client_profile_tab', 
+    'customer_tabs',
+    'client_tabs'
+];
 
-// Also try alternative hook names for different Perfex versions
-hooks()->add_action('client_profile_tab', 'whatsapp_conversations_tab');
-hooks()->add_action('client_profile_tab_content', 'whatsapp_conversations_tab_content');
+foreach ($hook_variations as $hook) {
+    hooks()->add_action($hook, 'whatsapp_conversations_tab_safe');
+    hooks()->add_action($hook . '_content', 'whatsapp_conversations_tab_content_safe');
+}
 
-whatsapp_debug_log('Hooks registered');
+whatsapp_debug_log('Hooks registered with variations');
 
 /**
- * Extract customer ID from various parameter formats
+ * Get customer ID from current URL
  */
-function whatsapp_extract_customer_id($param) {
-    whatsapp_debug_log('Extracting customer ID from: ' . print_r($param, true));
-    
-    // If it's already a simple number/string
-    if (is_numeric($param)) {
-        whatsapp_debug_log('Parameter is numeric: ' . $param);
-        return (int)$param;
-    }
-    
-    // If it's an array, try different possible keys
-    if (is_array($param)) {
-        whatsapp_debug_log('Parameter is array with keys: ' . implode(', ', array_keys($param)));
-        
-        $possible_keys = ['customer_id', 'client_id', 'id', 'userid', 'user_id'];
-        foreach ($possible_keys as $key) {
-            if (isset($param[$key]) && is_numeric($param[$key])) {
-                whatsapp_debug_log('Found customer ID in array key "' . $key . '": ' . $param[$key]);
-                return (int)$param[$key];
-            }
-        }
-        
-        // If array has numeric keys, try the first one
-        if (isset($param[0]) && is_numeric($param[0])) {
-            whatsapp_debug_log('Using first array element: ' . $param[0]);
-            return (int)$param[0];
-        }
-    }
-    
-    // If it's an object, try to extract ID
-    if (is_object($param)) {
-        whatsapp_debug_log('Parameter is object');
-        $possible_props = ['customer_id', 'client_id', 'id', 'userid', 'user_id'];
-        foreach ($possible_props as $prop) {
-            if (isset($param->$prop) && is_numeric($param->$prop)) {
-                whatsapp_debug_log('Found customer ID in object property "' . $prop . '": ' . $param->$prop);
-                return (int)$param->$prop;
-            }
-        }
-    }
-    
-    // Last resort: try to get from URL
+function whatsapp_get_current_customer_id() {
     $CI = &get_instance();
-    $uri_segments = $CI->uri->segment_array();
-    whatsapp_debug_log('URI segments: ' . implode(', ', $uri_segments));
     
-    // Look for client/customer in URL segments
-    $client_segment_index = array_search('client', $uri_segments);
-    if ($client_segment_index !== false && isset($uri_segments[$client_segment_index + 1])) {
-        $customer_id = (int)$uri_segments[$client_segment_index + 1];
-        whatsapp_debug_log('Extracted customer ID from URI: ' . $customer_id);
-        return $customer_id;
+    // Try multiple methods to get customer ID
+    $methods = [
+        // Method 1: URI segments
+        function() use ($CI) {
+            $segments = $CI->uri->segment_array();
+            $client_index = array_search('client', $segments);
+            if ($client_index !== false && isset($segments[$client_index + 1])) {
+                return (int)$segments[$client_index + 1];
+            }
+            return 0;
+        },
+        
+        // Method 2: GET parameter
+        function() {
+            return isset($_GET['customer_id']) ? (int)$_GET['customer_id'] : 
+                   (isset($_GET['client_id']) ? (int)$_GET['client_id'] : 0);
+        },
+        
+        // Method 3: POST parameter
+        function() {
+            return isset($_POST['customer_id']) ? (int)$_POST['customer_id'] : 
+                   (isset($_POST['client_id']) ? (int)$_POST['client_id'] : 0);
+        }
+    ];
+    
+    foreach ($methods as $method) {
+        $id = $method();
+        if ($id > 0) {
+            whatsapp_debug_log("Found customer ID: $id");
+            return $id;
+        }
     }
     
-    whatsapp_debug_log('Could not extract customer ID, defaulting to 0');
+    whatsapp_debug_log("Could not determine customer ID");
     return 0;
+}
+
+/**
+ * Safe tab function that handles any parameter format
+ */
+function whatsapp_conversations_tab_safe($param = null) {
+    try {
+        whatsapp_debug_log('Safe tab function called with param: ' . gettype($param));
+        
+        // Don't output anything here - let JavaScript handle it
+        // This prevents the 404 error from malformed parameters
+        
+        // Just ensure we have permission
+        if (has_permission('whatsapp_conversations', '', 'view') || is_admin()) {
+            whatsapp_debug_log('Permission check passed for tab');
+            // Tab will be added via JavaScript
+        }
+    } catch (Exception $e) {
+        whatsapp_debug_log('Error in tab function: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Safe content function that handles any parameter format
+ */
+function whatsapp_conversations_tab_content_safe($param = null) {
+    try {
+        whatsapp_debug_log('Safe content function called with param: ' . gettype($param));
+        
+        // Don't output anything here - let JavaScript handle it
+        // This prevents the 404 error from malformed parameters
+        
+        if (has_permission('whatsapp_conversations', '', 'view') || is_admin()) {
+            whatsapp_debug_log('Permission check passed for content');
+            // Content will be loaded via JavaScript
+        }
+    } catch (Exception $e) {
+        whatsapp_debug_log('Error in content function: ' . $e->getMessage());
+    }
 }
 
 /**
@@ -154,183 +181,105 @@ function whatsapp_conversations_add_head_components()
     if ($is_customer_page) {
         whatsapp_debug_log('Adding CSS and JS assets');
         
+        $customer_id = whatsapp_get_current_customer_id();
+        
         echo '<link href="' . module_dir_url(WHATSAPP_CONVERSATIONS_MODULE_NAME, 'assets/css/whatsapp_conversations.css') . '" rel="stylesheet" type="text/css" />';
         
-        // Force add the tab via JavaScript as fallback
+        // Enhanced JavaScript that loads actual content
         echo '<script>
-            console.log("WhatsApp Module: Force adding tab via JavaScript");
+            var whatsAppCustomerId = ' . $customer_id . ';
+            console.log("WhatsApp Module: Customer ID detected:", whatsAppCustomerId);
             
-            function addWhatsAppTabFallback() {
-                console.log("WhatsApp Module: Attempting fallback tab addition");
-                
-                // Look for various possible tab containers
-                var tabSelectors = [
-                    ".nav-tabs",
-                    ".nav.nav-tabs", 
-                    "#customer_profile_tabs",
-                    "#client_profile_tabs",
-                    ".profile-tabs .nav-tabs",
-                    ".customer-tabs .nav-tabs"
-                ];
-                
-                var contentSelectors = [
-                    ".tab-content",
-                    "#customer_profile_tab_content", 
-                    "#client_profile_tab_content",
-                    ".profile-content .tab-content",
-                    ".customer-content .tab-content"
-                ];
-                
-                var tabAdded = false;
-                
-                // Try to find and add to tab navigation
-                for (var i = 0; i < tabSelectors.length; i++) {
-                    var $tabs = $(tabSelectors[i]);
-                    if ($tabs.length > 0) {
-                        console.log("WhatsApp Module: Found tabs container:", tabSelectors[i]);
-                        
-                        // Check if tab already exists
-                        if ($tabs.find(\'a[href="#whatsapp_conversations"]\').length === 0) {
-                            $tabs.append(\'<li role="presentation"><a href="#whatsapp_conversations" aria-controls="whatsapp_conversations" role="tab" data-toggle="tab"><i class="fa fa-whatsapp" aria-hidden="true"></i> WhatsApp Conversations</a></li>\');
-                            console.log("WhatsApp Module: Tab added to", tabSelectors[i]);
-                            tabAdded = true;
-                        }
-                        break;
-                    }
-                }
-                
-                // Try to find and add tab content
-                for (var j = 0; j < contentSelectors.length; j++) {
-                    var $content = $(contentSelectors[j]);
-                    if ($content.length > 0) {
-                        console.log("WhatsApp Module: Found content container:", contentSelectors[j]);
-                        
-                        // Check if content already exists
-                        if ($content.find(\'#whatsapp_conversations\').length === 0) {
-                            $content.append(\'<div role="tabpanel" class="tab-pane" id="whatsapp_conversations"><div class="alert alert-info"><h4><i class="fa fa-whatsapp"></i> WhatsApp Conversations</h4><p>Loading WhatsApp conversations...</p><p><small>If this message persists, please check module permissions and installation.</small></p></div></div>\');
-                            console.log("WhatsApp Module: Content added to", contentSelectors[j]);
-                        }
-                        break;
-                    }
-                }
-                
-                if (tabAdded) {
-                    console.log("WhatsApp Module: Fallback tab successfully added");
+            function loadWhatsAppContent() {
+                if (whatsAppCustomerId > 0) {
+                    // Load actual content via AJAX
+                    var contentUrl = "' . admin_url('whatsapp_conversations/get_tab_content/') . '" + whatsAppCustomerId;
+                    
+                    $.get(contentUrl)
+                        .done(function(response) {
+                            console.log("WhatsApp Module: Content loaded successfully");
+                            $("#whatsapp_conversations").html(response);
+                        })
+                        .fail(function() {
+                            console.log("WhatsApp Module: Using fallback content");
+                            $("#whatsapp_conversations").html(`
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="alert alert-info">
+                                            <h4><i class="fa fa-whatsapp"></i> WhatsApp Conversations</h4>
+                                            <p>WhatsApp conversation management for this customer.</p>
+                                            <p><small>Customer ID: ${whatsAppCustomerId}</small></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `);
+                        });
                 } else {
-                    console.log("WhatsApp Module: Could not find suitable tab container");
-                    console.log("Available elements:", {
-                        "nav-tabs": $(".nav-tabs").length,
-                        "tab-content": $(".tab-content").length,
-                        "all-tabs": $("[class*=\'tab\']").length
-                    });
+                    $("#whatsapp_conversations").html(`
+                        <div class="alert alert-warning">
+                            <h4>WhatsApp Conversations</h4>
+                            <p>Could not determine customer ID.</p>
+                        </div>
+                    `);
                 }
             }
             
-            // Wait for jQuery and DOM
-            function initWhatsAppFallback() {
-                if (typeof jQuery !== "undefined") {
-                    $(document).ready(function() {
-                        setTimeout(addWhatsAppTabFallback, 1000); // Wait 1 second for page to fully load
-                    });
-                } else {
-                    setTimeout(initWhatsAppFallback, 100);
+            function addWhatsAppTab() {
+                console.log("WhatsApp Module: Adding tab and content");
+                
+                // Find tab container
+                var $tabContainer = $(".nav-tabs").first();
+                if ($tabContainer.length === 0) {
+                    console.log("WhatsApp Module: No tab container found");
+                    return;
                 }
+                
+                // Find content container  
+                var $contentContainer = $(".tab-content").first();
+                if ($contentContainer.length === 0) {
+                    console.log("WhatsApp Module: No content container found");
+                    return;
+                }
+                
+                // Check if tab already exists
+                if ($tabContainer.find(\'a[href="#whatsapp_conversations"]\').length > 0) {
+                    console.log("WhatsApp Module: Tab already exists");
+                    return;
+                }
+                
+                // Add tab
+                $tabContainer.append(`
+                    <li role="presentation">
+                        <a href="#whatsapp_conversations" aria-controls="whatsapp_conversations" role="tab" data-toggle="tab">
+                            <i class="fa fa-whatsapp" aria-hidden="true"></i> 
+                            WhatsApp Conversations
+                        </a>
+                    </li>
+                `);
+                
+                // Add content
+                $contentContainer.append(`
+                    <div role="tabpanel" class="tab-pane" id="whatsapp_conversations">
+                        <div class="text-center" style="padding: 20px;">
+                            <i class="fa fa-spinner fa-spin"></i> Loading...
+                        </div>
+                    </div>
+                `);
+                
+                console.log("WhatsApp Module: Tab and content added successfully");
+                
+                // Load content after a short delay
+                setTimeout(loadWhatsAppContent, 500);
             }
             
-            initWhatsAppFallback();
-            
-            // Load our main script
-            function loadWhatsAppScript() {
-                if (typeof jQuery !== "undefined") {
-                    console.log("WhatsApp Module: jQuery available, loading script");
-                    var script = document.createElement("script");
-                    script.src = "' . module_dir_url(WHATSAPP_CONVERSATIONS_MODULE_NAME, 'assets/js/whatsapp_conversations.js') . '";
-                    script.onload = function() {
-                        console.log("WhatsApp Module: Script loaded successfully");
-                    };
-                    script.onerror = function() {
-                        console.error("WhatsApp Module: Failed to load script");
-                    };
-                    document.head.appendChild(script);
-                } else {
-                    setTimeout(loadWhatsAppScript, 100);
-                }
-            }
-            
-            loadWhatsAppScript();
+            // Initialize when DOM is ready
+            $(document).ready(function() {
+                setTimeout(addWhatsAppTab, 1000);
+            });
         </script>';
-    }
-}
-
-/**
- * Add WhatsApp Conversations tab in customer profile
- */
-function whatsapp_conversations_tab($customer_data = null)
-{
-    $customer_id = whatsapp_extract_customer_id($customer_data);
-    whatsapp_debug_log("Tab function called for customer: $customer_id");
-    
-    if ($customer_id <= 0) {
-        whatsapp_debug_log("Invalid customer ID, skipping tab");
-        return;
-    }
-    
-    if (has_permission('whatsapp_conversations', '', 'view') || is_admin()) {
-        whatsapp_debug_log("Permission check passed for customer: $customer_id");
         
-        echo '<li role="presentation">
-            <a href="#whatsapp_conversations" aria-controls="whatsapp_conversations" role="tab" data-toggle="tab">
-                <i class="fa fa-whatsapp" aria-hidden="true"></i> 
-                ' . _l('whatsapp_conversations') . '
-            </a>
-        </li>';
-        
-        whatsapp_debug_log("Tab HTML output for customer: $customer_id");
-        
-        echo '<script>
-            console.log("WhatsApp Module: Tab added for customer: ' . $customer_id . '");
-        </script>';
-    } else {
-        whatsapp_debug_log("Permission check FAILED for customer: $customer_id");
-    }
-}
-
-/**
- * Add WhatsApp Conversations tab content
- */
-function whatsapp_conversations_tab_content($customer_data = null)
-{
-    $customer_id = whatsapp_extract_customer_id($customer_data);
-    whatsapp_debug_log("Tab content function called for customer: $customer_id");
-    
-    if ($customer_id <= 0) {
-        whatsapp_debug_log("Invalid customer ID, skipping content");
-        return;
-    }
-    
-    if (has_permission('whatsapp_conversations', '', 'view') || is_admin()) {
-        whatsapp_debug_log("Content permission check passed for customer: $customer_id");
-        
-        $CI = &get_instance();
-        $CI->load->model('whatsapp_conversations_model');
-        
-        $data['customer_id'] = $customer_id;
-        $data['conversations'] = $CI->whatsapp_conversations_model->get_by_customer($customer_id);
-        $data['can_create'] = has_permission('whatsapp_conversations', '', 'create') || is_admin();
-        $data['can_edit'] = has_permission('whatsapp_conversations', '', 'edit') || is_admin();
-        $data['can_delete'] = has_permission('whatsapp_conversations', '', 'delete') || is_admin();
-
-        echo '<div role="tabpanel" class="tab-pane" id="whatsapp_conversations">';
-        $CI->load->view('whatsapp_conversations/customer_tab', $data);
-        echo '</div>';
-        
-        whatsapp_debug_log("Tab content HTML output for customer: $customer_id");
-        
-        echo '<script>
-            console.log("WhatsApp Module: Tab content loaded for customer: ' . $customer_id . '");
-        </script>';
-    } else {
-        whatsapp_debug_log("Content permission check FAILED for customer: $customer_id");
+        // Load the main JavaScript file
+        echo '<script src="' . module_dir_url(WHATSAPP_CONVERSATIONS_MODULE_NAME, 'assets/js/whatsapp_conversations.js') . '"></script>';
     }
 }
 
