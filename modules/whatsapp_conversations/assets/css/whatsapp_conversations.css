@@ -1,0 +1,119 @@
+/* WhatsApp Conversations Module Styles */
+
+.whatsapp-conversation-item {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+}
+
+.whatsapp-conversation-item:hover {
+    background-color: #f5f5f5;
+    border-color: #ddd;
+}
+
+.conversation-header {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.conversation-header strong {
+    color: #333;
+    font-size: 14px;
+}
+
+.conversation-header small {
+    margin-left: 10px;
+    font-size: 12px;
+}
+
+.conversation-summary {
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 3px;
+    color: #856404;
+}
+
+.conversation-summary strong {
+    color: #6c5500;
+}
+
+.conversation-content {
+    background-color: #ffffff;
+    padding: 15px;
+    border: 1px solid #e9ecef;
+    border-radius: 3px;
+    line-height: 1.6;
+    color: #495057;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.whatsapp-conversation-item .btn-group {
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.whatsapp-conversation-item:hover .btn-group {
+    opacity: 1;
+}
+
+/* Panel customizations */
+.panel-info > .panel-heading {
+    background-color: #25d366;
+    border-color: #25d366;
+}
+
+.panel-info > .panel-heading .panel-title a {
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.panel-info > .panel-heading .panel-title a:hover {
+    color: #f0f0f0;
+}
+
+/* Form styling */
+#whatsapp-conversation-form textarea,
+#edit-conversation-form textarea {
+    min-height: 120px;
+    font-family: 'Courier New', monospace;
+}
+
+/* Badge styling */
+.panel-title .badge {
+    background-color: #25d366;
+    color: white;
+    margin-left: 5px;
+}
+
+/* Empty state styling */
+.fa-whatsapp.fa-3x {
+    color: #25d366 !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .whatsapp-conversation-item {
+        padding: 10px;
+    }
+    
+    .conversation-header .pull-right,
+    .conversation-header .pull-left {
+        float: none !important;
+        display: block;
+        text-align: left;
+    }
+    
+    .conversation-header .pull-right {
+        margin-top: 10px;
+    }
+    
+    .whatsapp-conversation-item .btn-group {
+        opacity: 1;
+    }
+}
