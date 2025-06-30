@@ -4,7 +4,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 /*
 Module Name: WhatsApp Conversations
 Description: Manage WhatsApp conversations for customers
-Version: 1.0.5
+Version: 1.0.6
 Author: Custom Module
 Requires at least: 2.3.*
 */
@@ -39,51 +39,78 @@ function whatsapp_conversations_module_activation_hook()
  */
 register_language_files(WHATSAPP_CONVERSATIONS_MODULE_NAME, [WHATSAPP_CONVERSATIONS_MODULE_NAME]);
 
-// Register all possible hook variations for maximum compatibility
-$customer_tab_hooks = [
-    'customer_profile_tab',
-    'client_profile_tab', 
-    'customer_tab',
-    'client_tab',
-    'customer_profile_tabs',
-    'client_profile_tabs'
-];
-
-$customer_tab_content_hooks = [
-    'customer_profile_tab_content',
-    'client_profile_tab_content',
-    'customer_tab_content', 
-    'client_tab_content',
-    'customer_profile_tab_contents',
-    'client_profile_tab_contents'
-];
-
 // Register hooks
 hooks()->add_action('admin_init', 'whatsapp_conversations_module_init_menu_items');
 hooks()->add_action('app_admin_head', 'whatsapp_conversations_add_head_components');
 
-// Register all possible customer tab hook variations
-foreach ($customer_tab_hooks as $hook) {
-    hooks()->add_action($hook, 'whatsapp_conversations_tab');
-    whatsapp_debug_log("Registered hook: $hook");
-}
+// Register customer tab hooks with proper parameter handling
+hooks()->add_action('customer_profile_tab', 'whatsapp_conversations_tab');
+hooks()->add_action('customer_profile_tab_content', 'whatsapp_conversations_tab_content');
 
-foreach ($customer_tab_content_hooks as $hook) {
-    hooks()->add_action($hook, 'whatsapp_conversations_tab_content');
-    whatsapp_debug_log("Registered content hook: $hook");
-}
+// Also try alternative hook names for different Perfex versions
+hooks()->add_action('client_profile_tab', 'whatsapp_conversations_tab');
+hooks()->add_action('client_profile_tab_content', 'whatsapp_conversations_tab_content');
 
-// Also try direct hook registration for specific Perfex versions
-hooks()->add_action('after_customer_profile_file_uploaded', 'whatsapp_debug_customer_context');
-hooks()->add_action('before_customer_updated', 'whatsapp_debug_customer_context');
-
-whatsapp_debug_log('All hooks registered');
+whatsapp_debug_log('Hooks registered');
 
 /**
- * Debug function to confirm we're in customer context
+ * Extract customer ID from various parameter formats
  */
-function whatsapp_debug_customer_context($customer_id = null) {
-    whatsapp_debug_log("Customer context detected - ID: $customer_id");
+function whatsapp_extract_customer_id($param) {
+    whatsapp_debug_log('Extracting customer ID from: ' . print_r($param, true));
+    
+    // If it's already a simple number/string
+    if (is_numeric($param)) {
+        whatsapp_debug_log('Parameter is numeric: ' . $param);
+        return (int)$param;
+    }
+    
+    // If it's an array, try different possible keys
+    if (is_array($param)) {
+        whatsapp_debug_log('Parameter is array with keys: ' . implode(', ', array_keys($param)));
+        
+        $possible_keys = ['customer_id', 'client_id', 'id', 'userid', 'user_id'];
+        foreach ($possible_keys as $key) {
+            if (isset($param[$key]) && is_numeric($param[$key])) {
+                whatsapp_debug_log('Found customer ID in array key "' . $key . '": ' . $param[$key]);
+                return (int)$param[$key];
+            }
+        }
+        
+        // If array has numeric keys, try the first one
+        if (isset($param[0]) && is_numeric($param[0])) {
+            whatsapp_debug_log('Using first array element: ' . $param[0]);
+            return (int)$param[0];
+        }
+    }
+    
+    // If it's an object, try to extract ID
+    if (is_object($param)) {
+        whatsapp_debug_log('Parameter is object');
+        $possible_props = ['customer_id', 'client_id', 'id', 'userid', 'user_id'];
+        foreach ($possible_props as $prop) {
+            if (isset($param->$prop) && is_numeric($param->$prop)) {
+                whatsapp_debug_log('Found customer ID in object property "' . $prop . '": ' . $param->$prop);
+                return (int)$param->$prop;
+            }
+        }
+    }
+    
+    // Last resort: try to get from URL
+    $CI = &get_instance();
+    $uri_segments = $CI->uri->segment_array();
+    whatsapp_debug_log('URI segments: ' . implode(', ', $uri_segments));
+    
+    // Look for client/customer in URL segments
+    $client_segment_index = array_search('client', $uri_segments);
+    if ($client_segment_index !== false && isset($uri_segments[$client_segment_index + 1])) {
+        $customer_id = (int)$uri_segments[$client_segment_index + 1];
+        whatsapp_debug_log('Extracted customer ID from URI: ' . $customer_id);
+        return $customer_id;
+    }
+    
+    whatsapp_debug_log('Could not extract customer ID, defaulting to 0');
+    return 0;
 }
 
 /**
@@ -238,9 +265,15 @@ function whatsapp_conversations_add_head_components()
 /**
  * Add WhatsApp Conversations tab in customer profile
  */
-function whatsapp_conversations_tab($customer_id)
+function whatsapp_conversations_tab($customer_data = null)
 {
+    $customer_id = whatsapp_extract_customer_id($customer_data);
     whatsapp_debug_log("Tab function called for customer: $customer_id");
+    
+    if ($customer_id <= 0) {
+        whatsapp_debug_log("Invalid customer ID, skipping tab");
+        return;
+    }
     
     if (has_permission('whatsapp_conversations', '', 'view') || is_admin()) {
         whatsapp_debug_log("Permission check passed for customer: $customer_id");
@@ -265,9 +298,15 @@ function whatsapp_conversations_tab($customer_id)
 /**
  * Add WhatsApp Conversations tab content
  */
-function whatsapp_conversations_tab_content($customer_id)
+function whatsapp_conversations_tab_content($customer_data = null)
 {
+    $customer_id = whatsapp_extract_customer_id($customer_data);
     whatsapp_debug_log("Tab content function called for customer: $customer_id");
+    
+    if ($customer_id <= 0) {
+        whatsapp_debug_log("Invalid customer ID, skipping content");
+        return;
+    }
     
     if (has_permission('whatsapp_conversations', '', 'view') || is_admin()) {
         whatsapp_debug_log("Content permission check passed for customer: $customer_id");
