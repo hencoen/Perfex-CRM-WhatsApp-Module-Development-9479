@@ -1,6 +1,13 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
 
+// Debug function
+function whatsapp_install_debug($message) {
+    log_message('info', 'WhatsApp Install Debug: ' . $message);
+}
+
+whatsapp_install_debug('Installation started');
+
 // Check if database connection exists
 if (!isset($CI)) {
     $CI = &get_instance();
@@ -8,20 +15,32 @@ if (!isset($CI)) {
 
 // Get the correct database prefix
 $db_prefix = $CI->db->dbprefix;
+whatsapp_install_debug('Database prefix: ' . $db_prefix);
 
 // Create the WhatsApp conversations table if it doesn't exist
-if (!$CI->db->table_exists($db_prefix . 'whatsapp_conversations')) {
-    $CI->db->query('CREATE TABLE `' . $db_prefix . "whatsapp_conversations` (
-        `id` int(11) NOT NULL AUTO_INCREMENT,
-        `customer_id` int(11) NOT NULL,
-        `staff_id` int(11) NOT NULL,
-        `conversation` text NOT NULL,
-        `summary` text,
-        `date_added` datetime NOT NULL,
-        PRIMARY KEY (`id`),
-        KEY `customer_id` (`customer_id`),
-        KEY `staff_id` (`staff_id`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=" . $CI->db->char_set . ';');
+$table_name = $db_prefix . 'whatsapp_conversations';
+if (!$CI->db->table_exists($table_name)) {
+    whatsapp_install_debug('Creating table: ' . $table_name);
+    
+    try {
+        $CI->db->query('CREATE TABLE `' . $table_name . "` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `customer_id` int(11) NOT NULL,
+            `staff_id` int(11) NOT NULL,
+            `conversation` text NOT NULL,
+            `summary` text,
+            `date_added` datetime NOT NULL,
+            PRIMARY KEY (`id`),
+            KEY `customer_id` (`customer_id`),
+            KEY `staff_id` (`staff_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=" . $CI->db->char_set . ';');
+        
+        whatsapp_install_debug('Table created successfully');
+    } catch (Exception $e) {
+        whatsapp_install_debug('Error creating table: ' . $e->getMessage());
+    }
+} else {
+    whatsapp_install_debug('Table already exists: ' . $table_name);
 }
 
 // Try to add module permissions with enhanced error handling
@@ -36,8 +55,14 @@ $possible_permission_tables = [
     'tblpermissions'
 ];
 
+whatsapp_install_debug('Looking for permission tables...');
+
 foreach ($possible_permission_tables as $table) {
+    whatsapp_install_debug('Checking table: ' . $table);
+    
     if ($CI->db->table_exists($table)) {
+        whatsapp_install_debug('Table exists: ' . $table);
+        
         try {
             // Get table structure to understand column names
             $fields = $CI->db->field_data($table);
@@ -45,6 +70,8 @@ foreach ($possible_permission_tables as $table) {
             foreach ($fields as $field) {
                 $column_names[] = $field->name;
             }
+            
+            whatsapp_install_debug('Table columns: ' . implode(', ', $column_names));
             
             // Try different possible column name combinations
             $name_column = null;
@@ -67,6 +94,8 @@ foreach ($possible_permission_tables as $table) {
                 $shortname_column = 'perm_short';
             }
             
+            whatsapp_install_debug('Name column: ' . ($name_column ?: 'none') . ', Short column: ' . ($shortname_column ?: 'none'));
+            
             // Only try to insert if we found appropriate columns
             if ($name_column) {
                 // Check if permission already exists
@@ -81,28 +110,40 @@ foreach ($possible_permission_tables as $table) {
                     
                     $CI->db->insert($table, $insert_data);
                     $permission_added = true;
-                    log_message('info', 'WhatsApp Conversations Module: Permission added to table ' . $table);
+                    whatsapp_install_debug('Permission added to table: ' . $table);
+                    break;
+                } else {
+                    whatsapp_install_debug('Permission already exists in table: ' . $table);
+                    $permission_added = true;
                     break;
                 }
+            } else {
+                whatsapp_install_debug('No suitable name column found in table: ' . $table);
             }
             
         } catch (Exception $e) {
-            // Log the error but continue
-            log_message('error', 'WhatsApp Conversations Module: Error with permissions table ' . $table . ': ' . $e->getMessage());
+            whatsapp_install_debug('Error with permissions table ' . $table . ': ' . $e->getMessage());
             continue;
         }
+    } else {
+        whatsapp_install_debug('Table does not exist: ' . $table);
     }
 }
 
 if (!$permission_added) {
-    // Log that permissions couldn't be added but don't fail the installation
-    log_message('info', 'WhatsApp Conversations Module: Could not add permissions automatically. Module installed with basic functionality.');
+    whatsapp_install_debug('Could not add permissions automatically. Module installed with basic functionality.');
+} else {
+    whatsapp_install_debug('Permissions added successfully');
 }
 
 // Create a simple log entry to confirm installation
 if (function_exists('log_activity')) {
-    log_activity('WhatsApp Conversations Module Installed Successfully');
+    try {
+        log_activity('WhatsApp Conversations Module Installed Successfully');
+        whatsapp_install_debug('Activity logged');
+    } catch (Exception $e) {
+        whatsapp_install_debug('Error logging activity: ' . $e->getMessage());
+    }
 }
 
-// Log installation success
-log_message('info', 'WhatsApp Conversations Module: Installation completed successfully');
+whatsapp_install_debug('Installation completed');
