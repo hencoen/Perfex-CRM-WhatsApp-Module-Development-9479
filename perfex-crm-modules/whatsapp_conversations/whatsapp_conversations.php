@@ -4,7 +4,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 /*
 Module Name: WhatsApp Conversations
 Description: Manage WhatsApp conversations for customers
-Version: 1.0.0
+Version: 1.0.1
 Author: Custom Module
 Requires at least: 2.3.*
 */
@@ -40,17 +40,22 @@ function whatsapp_conversations_module_init_menu_items()
 {
     $CI = &get_instance();
     
-    // Only register capabilities if the function exists (Perfex CRM compatibility)
-    if (function_exists('register_staff_capabilities')) {
-        $capabilities = [];
-        $capabilities['capabilities'] = [
-            'view' => _l('permission_view') . '(' . _l('permission_global') . ')',
-            'create' => _l('permission_create'),
-            'edit' => _l('permission_edit'),
-            'delete' => _l('permission_delete'),
-        ];
-        
-        register_staff_capabilities('whatsapp_conversations', $capabilities, _l('whatsapp_conversations'));
+    // Only register capabilities if the function exists and we're in a proper admin context
+    if (function_exists('register_staff_capabilities') && function_exists('_l')) {
+        try {
+            $capabilities = [];
+            $capabilities['capabilities'] = [
+                'view' => 'View WhatsApp Conversations',
+                'create' => 'Create WhatsApp Conversations',
+                'edit' => 'Edit WhatsApp Conversations',
+                'delete' => 'Delete WhatsApp Conversations',
+            ];
+            
+            register_staff_capabilities('whatsapp_conversations', $capabilities, 'WhatsApp Conversations');
+        } catch (Exception $e) {
+            // Log error but don't break functionality
+            log_message('error', 'WhatsApp Conversations Module: Error registering capabilities: ' . $e->getMessage());
+        }
     }
 }
 
@@ -69,19 +74,39 @@ function whatsapp_conversations_add_head_components()
 }
 
 /**
+ * Check if user has permission with fallback
+ */
+function whatsapp_conversations_has_permission($permission_type = 'view')
+{
+    if (function_exists('has_permission')) {
+        try {
+            return has_permission('whatsapp_conversations', '', $permission_type);
+        } catch (Exception $e) {
+            // If permission system fails, allow basic access for admins
+            if (function_exists('is_admin')) {
+                return is_admin();
+            }
+            return true; // Fallback to allow access
+        }
+    }
+    
+    // If no permission system, allow access for staff users
+    if (function_exists('is_staff_logged_in')) {
+        return is_staff_logged_in();
+    }
+    
+    return true; // Final fallback
+}
+
+/**
  * Add WhatsApp Conversations tab in customer profile
  */
 function whatsapp_conversations_tab($customer_id)
 {
-    // Check permission with fallback for older Perfex versions
-    $has_permission = function_exists('has_permission') ? 
-        has_permission('whatsapp_conversations', '', 'view') : 
-        true; // Fallback to true if permission function doesn't exist
-        
-    if ($has_permission) {
+    if (whatsapp_conversations_has_permission('view')) {
         echo '<li role="presentation">
             <a href="#whatsapp_conversations" aria-controls="whatsapp_conversations" role="tab" data-toggle="tab">
-                <i class="fa fa-whatsapp" aria-hidden="true"></i> ' . _l('whatsapp_conversations') . '
+                <i class="fa fa-whatsapp" aria-hidden="true"></i> WhatsApp Conversations
             </a>
         </li>';
     }
@@ -92,12 +117,7 @@ function whatsapp_conversations_tab($customer_id)
  */
 function whatsapp_conversations_tab_content($customer_id)
 {
-    // Check permission with fallback for older Perfex versions
-    $has_permission = function_exists('has_permission') ? 
-        has_permission('whatsapp_conversations', '', 'view') : 
-        true; // Fallback to true if permission function doesn't exist
-        
-    if ($has_permission) {
+    if (whatsapp_conversations_has_permission('view')) {
         $CI = &get_instance();
         $CI->load->model('whatsapp_conversations_model');
         
@@ -105,12 +125,9 @@ function whatsapp_conversations_tab_content($customer_id)
         $data['conversations'] = $CI->whatsapp_conversations_model->get_by_customer($customer_id);
         
         // Permission checks with fallbacks
-        $data['can_create'] = function_exists('has_permission') ? 
-            has_permission('whatsapp_conversations', '', 'create') : true;
-        $data['can_edit'] = function_exists('has_permission') ? 
-            has_permission('whatsapp_conversations', '', 'edit') : true;
-        $data['can_delete'] = function_exists('has_permission') ? 
-            has_permission('whatsapp_conversations', '', 'delete') : true;
+        $data['can_create'] = whatsapp_conversations_has_permission('create');
+        $data['can_edit'] = whatsapp_conversations_has_permission('edit');
+        $data['can_delete'] = whatsapp_conversations_has_permission('delete');
             
         echo '<div role="tabpanel" class="tab-pane" id="whatsapp_conversations">';
         $CI->load->view('whatsapp_conversations/customer_tab', $data);

@@ -10,18 +10,43 @@ class Whatsapp_conversations extends AdminController
     }
 
     /**
+     * Check permission with enhanced fallback
+     */
+    private function check_permission($permission_type)
+    {
+        if (function_exists('has_permission')) {
+            try {
+                if (!has_permission('whatsapp_conversations', '', $permission_type)) {
+                    if (function_exists('access_denied')) {
+                        access_denied('whatsapp_conversations');
+                    } else {
+                        show_error('Access denied', 403);
+                    }
+                }
+                return true;
+            } catch (Exception $e) {
+                // If permission check fails, check if user is admin
+                if (function_exists('is_admin') && is_admin()) {
+                    return true;
+                }
+                show_error('Permission system error', 500);
+            }
+        }
+        
+        // Fallback: check if user is staff
+        if (function_exists('is_staff_logged_in') && !is_staff_logged_in()) {
+            show_error('Access denied', 403);
+        }
+        
+        return true;
+    }
+
+    /**
      * Add new WhatsApp conversation
      */
     public function add($customer_id)
     {
-        // Check permission with fallback
-        if (function_exists('has_permission') && !has_permission('whatsapp_conversations', '', 'create')) {
-            if (function_exists('access_denied')) {
-                access_denied('whatsapp_conversations');
-            } else {
-                show_error('Access denied', 403);
-            }
-        }
+        $this->check_permission('create');
 
         if ($this->input->post()) {
             $data = $this->input->post();
@@ -33,11 +58,11 @@ class Whatsapp_conversations extends AdminController
 
             if ($id) {
                 if (function_exists('set_alert')) {
-                    set_alert('success', _l('added_successfully', _l('whatsapp_conversation')));
+                    set_alert('success', 'WhatsApp conversation added successfully');
                 }
             } else {
                 if (function_exists('set_alert')) {
-                    set_alert('danger', _l('problem_adding', _l('whatsapp_conversation')));
+                    set_alert('danger', 'Problem adding WhatsApp conversation');
                 }
             }
         }
@@ -50,14 +75,7 @@ class Whatsapp_conversations extends AdminController
      */
     public function edit($id)
     {
-        // Check permission with fallback
-        if (function_exists('has_permission') && !has_permission('whatsapp_conversations', '', 'edit')) {
-            if (function_exists('access_denied')) {
-                access_denied('whatsapp_conversations');
-            } else {
-                show_error('Access denied', 403);
-            }
-        }
+        $this->check_permission('edit');
 
         $conversation = $this->whatsapp_conversations_model->get($id);
         if (!$conversation) {
@@ -70,11 +88,11 @@ class Whatsapp_conversations extends AdminController
 
             if ($success) {
                 if (function_exists('set_alert')) {
-                    set_alert('success', _l('updated_successfully', _l('whatsapp_conversation')));
+                    set_alert('success', 'WhatsApp conversation updated successfully');
                 }
             } else {
                 if (function_exists('set_alert')) {
-                    set_alert('danger', _l('problem_updating', _l('whatsapp_conversation')));
+                    set_alert('danger', 'Problem updating WhatsApp conversation');
                 }
             }
 
@@ -90,14 +108,7 @@ class Whatsapp_conversations extends AdminController
      */
     public function delete($id)
     {
-        // Check permission with fallback
-        if (function_exists('has_permission') && !has_permission('whatsapp_conversations', '', 'delete')) {
-            if (function_exists('access_denied')) {
-                access_denied('whatsapp_conversations');
-            } else {
-                show_error('Access denied', 403);
-            }
-        }
+        $this->check_permission('delete');
 
         $conversation = $this->whatsapp_conversations_model->get($id);
         if (!$conversation) {
@@ -108,11 +119,11 @@ class Whatsapp_conversations extends AdminController
 
         if ($success) {
             if (function_exists('set_alert')) {
-                set_alert('success', _l('deleted', _l('whatsapp_conversation')));
+                set_alert('success', 'WhatsApp conversation deleted successfully');
             }
         } else {
             if (function_exists('set_alert')) {
-                set_alert('danger', _l('problem_deleting', _l('whatsapp_conversation')));
+                set_alert('danger', 'Problem deleting WhatsApp conversation');
             }
         }
 
@@ -124,14 +135,7 @@ class Whatsapp_conversations extends AdminController
      */
     public function get_conversation($id)
     {
-        // Check permission with fallback
-        if (function_exists('has_permission') && !has_permission('whatsapp_conversations', '', 'view')) {
-            if (function_exists('access_denied')) {
-                access_denied('whatsapp_conversations');
-            } else {
-                show_error('Access denied', 403);
-            }
-        }
+        $this->check_permission('view');
 
         $conversation = $this->whatsapp_conversations_model->get($id);
 
