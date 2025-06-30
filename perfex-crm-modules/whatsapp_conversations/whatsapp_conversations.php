@@ -1,5 +1,4 @@
 <?php
-
 defined('BASEPATH') or exit('No direct script access allowed');
 
 /*
@@ -40,16 +39,19 @@ register_language_files(WHATSAPP_CONVERSATIONS_MODULE_NAME, [WHATSAPP_CONVERSATI
 function whatsapp_conversations_module_init_menu_items()
 {
     $CI = &get_instance();
-
-    $capabilities = [];
-    $capabilities['capabilities'] = [
-        'view'   => _l('permission_view') . '(' . _l('permission_global') . ')',
-        'create' => _l('permission_create'),
-        'edit'   => _l('permission_edit'),
-        'delete' => _l('permission_delete'),
-    ];
-
-    register_staff_capabilities('whatsapp_conversations', $capabilities, _l('whatsapp_conversations'));
+    
+    // Only register capabilities if the function exists (Perfex CRM compatibility)
+    if (function_exists('register_staff_capabilities')) {
+        $capabilities = [];
+        $capabilities['capabilities'] = [
+            'view' => _l('permission_view') . '(' . _l('permission_global') . ')',
+            'create' => _l('permission_create'),
+            'edit' => _l('permission_edit'),
+            'delete' => _l('permission_delete'),
+        ];
+        
+        register_staff_capabilities('whatsapp_conversations', $capabilities, _l('whatsapp_conversations'));
+    }
 }
 
 /**
@@ -71,12 +73,17 @@ function whatsapp_conversations_add_head_components()
  */
 function whatsapp_conversations_tab($customer_id)
 {
-    if (has_permission('whatsapp_conversations', '', 'view')) {
+    // Check permission with fallback for older Perfex versions
+    $has_permission = function_exists('has_permission') ? 
+        has_permission('whatsapp_conversations', '', 'view') : 
+        true; // Fallback to true if permission function doesn't exist
+        
+    if ($has_permission) {
         echo '<li role="presentation">
-                <a href="#whatsapp_conversations" aria-controls="whatsapp_conversations" role="tab" data-toggle="tab">
-                    <i class="fa fa-whatsapp" aria-hidden="true"></i> ' . _l('whatsapp_conversations') . '
-                </a>
-              </li>';
+            <a href="#whatsapp_conversations" aria-controls="whatsapp_conversations" role="tab" data-toggle="tab">
+                <i class="fa fa-whatsapp" aria-hidden="true"></i> ' . _l('whatsapp_conversations') . '
+            </a>
+        </li>';
     }
 }
 
@@ -85,16 +92,26 @@ function whatsapp_conversations_tab($customer_id)
  */
 function whatsapp_conversations_tab_content($customer_id)
 {
-    if (has_permission('whatsapp_conversations', '', 'view')) {
+    // Check permission with fallback for older Perfex versions
+    $has_permission = function_exists('has_permission') ? 
+        has_permission('whatsapp_conversations', '', 'view') : 
+        true; // Fallback to true if permission function doesn't exist
+        
+    if ($has_permission) {
         $CI = &get_instance();
         $CI->load->model('whatsapp_conversations_model');
         
         $data['customer_id'] = $customer_id;
         $data['conversations'] = $CI->whatsapp_conversations_model->get_by_customer($customer_id);
-        $data['can_create'] = has_permission('whatsapp_conversations', '', 'create');
-        $data['can_edit'] = has_permission('whatsapp_conversations', '', 'edit');
-        $data['can_delete'] = has_permission('whatsapp_conversations', '', 'delete');
         
+        // Permission checks with fallbacks
+        $data['can_create'] = function_exists('has_permission') ? 
+            has_permission('whatsapp_conversations', '', 'create') : true;
+        $data['can_edit'] = function_exists('has_permission') ? 
+            has_permission('whatsapp_conversations', '', 'edit') : true;
+        $data['can_delete'] = function_exists('has_permission') ? 
+            has_permission('whatsapp_conversations', '', 'delete') : true;
+            
         echo '<div role="tabpanel" class="tab-pane" id="whatsapp_conversations">';
         $CI->load->view('whatsapp_conversations/customer_tab', $data);
         echo '</div>';

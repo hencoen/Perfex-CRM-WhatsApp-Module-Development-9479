@@ -1,5 +1,4 @@
 <?php
-
 defined('BASEPATH') or exit('No direct script access allowed');
 
 class Whatsapp_conversations_model extends App_Model
@@ -11,7 +10,7 @@ class Whatsapp_conversations_model extends App_Model
 
     /**
      * Get all conversations for a customer
-     * @param  int $customer_id
+     * @param int $customer_id
      * @return array
      */
     public function get_by_customer($customer_id)
@@ -27,7 +26,7 @@ class Whatsapp_conversations_model extends App_Model
 
     /**
      * Get single conversation
-     * @param  int $id
+     * @param int $id
      * @return object
      */
     public function get($id)
@@ -44,62 +43,64 @@ class Whatsapp_conversations_model extends App_Model
     public function add($data)
     {
         $this->db->insert(db_prefix() . 'whatsapp_conversations', $data);
-        
         $insert_id = $this->db->insert_id();
-        
-        if ($insert_id) {
+
+        if ($insert_id && function_exists('log_activity')) {
             log_activity('New WhatsApp Conversation Added [Customer ID: ' . $data['customer_id'] . ']');
         }
-        
+
         return $insert_id;
     }
 
     /**
      * Update conversation
-     * @param  int $id
-     * @param  array $data
+     * @param int $id
+     * @param array $data
      * @return boolean
      */
     public function update($id, $data)
     {
         $this->db->where('id', $id);
         $this->db->update(db_prefix() . 'whatsapp_conversations', $data);
-        
+
         if ($this->db->affected_rows() > 0) {
-            log_activity('WhatsApp Conversation Updated [ID: ' . $id . ']');
+            if (function_exists('log_activity')) {
+                log_activity('WhatsApp Conversation Updated [ID: ' . $id . ']');
+            }
             return true;
         }
-        
+
         return false;
     }
 
     /**
      * Delete conversation
-     * @param  int $id
+     * @param int $id
      * @return boolean
      */
     public function delete($id)
     {
         $conversation = $this->get($id);
-        
         if (!$conversation) {
             return false;
         }
-        
+
         $this->db->where('id', $id);
         $this->db->delete(db_prefix() . 'whatsapp_conversations');
-        
+
         if ($this->db->affected_rows() > 0) {
-            log_activity('WhatsApp Conversation Deleted [ID: ' . $id . ']');
+            if (function_exists('log_activity')) {
+                log_activity('WhatsApp Conversation Deleted [ID: ' . $id . ']');
+            }
             return true;
         }
-        
+
         return false;
     }
 
     /**
      * Get total conversations count for customer
-     * @param  int $customer_id
+     * @param int $customer_id
      * @return int
      */
     public function get_total_by_customer($customer_id)

@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run lint && vite build",
-    "lint": "eslint . --ignore-path .eslintignore",
-    "lint:error": "eslint . --quiet --ignore-path .eslintignore",
+    "lint": "eslint .",
+    "lint:error": "eslint . --quiet",
     "preview": "vite preview"
   },
   "dependencies": {

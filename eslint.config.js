@@ -4,16 +4,24 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 
 export default [
+  // Global ignores - these apply to all configurations
   {
     ignores: [
-      'dist',
-      'modules/**/*',
-      'perfex-crm-modules/**/*',
+      'dist/**',
+      'build/**',
+      'node_modules/**',
+      'modules/**',
+      'perfex-crm-modules/**',
       '**/*.php',
-      '**/assets/**/*'
+      '**/assets/**',
+      '*.min.js',
+      'public/assets/**',
+      '.env',
+      '.env.*'
     ]
   },
-  js.configs.recommended,
+  
+  // Main configuration for JS/JSX files
   {
     files: ['**/*.{js,jsx}'],
     languageOptions: {
@@ -21,8 +29,8 @@ export default [
       globals: {
         ...globals.browser,
         ...globals.node,
-        React: true,
-        JSX: true
+        React: 'readonly',
+        JSX: 'readonly'
       },
       parserOptions: {
         ecmaFeatures: {
@@ -36,11 +44,12 @@ export default [
       'react-refresh': reactRefresh,
     },
     rules: {
+      ...js.configs.recommended.rules,
       'no-undef': 'error',
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'off',
       'react-refresh/only-export-components': 'off',
-      'no-unused-vars': 'off',
+      'no-unused-vars': 'warn',
       'no-case-declarations': 'off',
     },
   }
