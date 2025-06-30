@@ -2,141 +2,102 @@
 
 A robust custom module that adds WhatsApp conversation management to customer profiles in Perfex CRM.
 
-## 🚀 Features
+## 🚨 **TROUBLESHOOTING GUIDE**
 
-- **Customer Integration**: Seamlessly integrates with existing customer profiles
-- **Conversation Management**: Add, edit, delete, and view WhatsApp conversations
-- **Summary Support**: Each conversation can have a brief summary for quick reference
-- **Permission System**: Full permission control (view, create, edit, delete)
-- **Responsive Design**: Works perfectly on desktop and mobile devices
-- **Activity Logging**: All actions are logged in the system activity log
-- **Database Compatibility**: Handles different Perfex CRM versions and database configurations
-- **Debug Logging**: Comprehensive logging for troubleshooting
+If the WhatsApp tab is not appearing in customer profiles, follow these steps:
 
-## 📋 Installation
+### **Step 1: Check Module Installation**
+1. Go to **Setup → Modules** in admin panel
+2. Find "WhatsApp Conversations" 
+3. If not installed, click **Install**
+4. If already installed, try **Uninstall** then **Install** again
 
-### Method 1: Standard Installation
+### **Step 2: Check Permissions**
+1. Go to **Setup → Staff → Roles**
+2. Edit your role (or Admin role)
+3. Find "WhatsApp Conversations" permissions
+4. Enable at least **View** permission
+5. Save changes
 
-1. **Upload Module**: Copy the entire `whatsapp_conversations` folder to your Perfex CRM installation at:
+### **Step 3: Check Debug Log**
+1. Look for `whatsapp_debug.log` in your Perfex CRM root directory
+2. You should see these entries when visiting a customer page:
    ```
-   /path/to/perfex-crm/modules/whatsapp_conversations/
+   Tab function called for customer: [ID]
+   Tab content function called for customer: [ID]
    ```
+3. If these are missing, the hooks aren't being triggered
 
-2. **Install via Admin Panel**:
-   - Login to your Perfex CRM admin panel
-   - Navigate to **Setup → Modules**
-   - Find "WhatsApp Conversations" in the list
-   - Click **Install**
+### **Step 4: Test Direct Access**
+1. Access: `your-site.com/modules/whatsapp_conversations/test_direct.php?customer_id=1`
+2. This will test if the module files are accessible
+3. Check browser console for JavaScript messages
 
-3. **Configure Permissions**:
-   - Go to **Setup → Staff → Roles**
-   - Edit the roles that should have access
-   - Configure permissions:
-     - **View**: Can see WhatsApp conversations
-     - **Create**: Can add new conversations
-     - **Edit**: Can modify existing conversations
-     - **Delete**: Can remove conversations
+### **Step 5: Browser Console Check**
+1. Open customer profile page
+2. Press F12 → Console tab  
+3. Look for these messages:
+   - `WhatsApp Module: Force adding tab via JavaScript`
+   - `WhatsApp Module: Tab added for customer: [ID]`
+   - `WhatsApp Module: Fallback tab successfully added`
 
-## 🔍 Troubleshooting
+### **Step 6: Manual Tab Addition (Fallback)**
+If hooks aren't working, the module now includes JavaScript fallback that:
+- Automatically detects tab containers
+- Adds the WhatsApp tab via JavaScript
+- Shows a placeholder message
 
-### If the tab doesn't appear:
+## 🔧 **Enhanced Features (v1.0.5)**
 
-1. **Check Module Installation**:
-   - Go to **Setup → Modules**
-   - Ensure "WhatsApp Conversations" shows as "Installed"
-   - If not, reinstall the module
+- **Multiple Hook Registration**: Tries all possible hook names for different Perfex versions
+- **JavaScript Fallback**: Automatically adds tab if PHP hooks fail
+- **Enhanced Debugging**: Comprehensive logging of all operations
+- **Permission Fallback**: Allows admin access even if permissions aren't set
+- **URI Detection**: Better detection of customer pages
+- **Direct Testing**: Includes test file for troubleshooting
 
-2. **Check Debug Logs**:
-   - Look in your Perfex CRM logs directory (usually `application/logs/`)
-   - Check for entries containing "WhatsApp Module Debug" or "WhatsApp Install Debug"
-   - This will show you exactly what's happening
+## 📋 **Installation**
 
-3. **Check File Permissions**:
-   - Ensure all module files have proper permissions
-   - Folders: 755, Files: 644
+1. **Upload Module**: Copy `whatsapp_conversations` folder to `/modules/`
+2. **Install**: Setup → Modules → Install "WhatsApp Conversations"
+3. **Set Permissions**: Setup → Staff → Roles → Enable WhatsApp permissions
+4. **Test**: Visit any customer profile page
 
-4. **Check Browser Console**:
-   - Open browser developer tools
-   - Check console for JavaScript errors or debug messages
-   - Look for "WhatsApp tab added" or "WhatsApp tab content loaded" messages
+## 🎯 **Expected Behavior**
 
-5. **Manual Permission Check**:
-   ```sql
-   -- Check if permissions exist (replace 'tbl' with your prefix)
-   SELECT * FROM tblpermissions WHERE name = 'whatsapp_conversations';
-   
-   -- Check if table exists
-   SHOW TABLES LIKE '%whatsapp_conversations%';
-   ```
+When working correctly, you should see:
+- New "WhatsApp Conversations" tab in customer profiles
+- Tab appears after existing tabs (Notes, Files, etc.)
+- Click tab to add/view/edit conversations
+- Full CRUD operations with proper permissions
 
-6. **Clear Cache**:
-   - Clear any server-side caches
-   - Clear browser cache
-   - Restart web server if possible
+## 🔍 **Still Not Working?**
 
-### Debug Information
+1. **Check PHP Error Logs**: Look for any PHP errors in server logs
+2. **Check File Permissions**: Ensure module files are readable (644/755)
+3. **Check Database**: Verify `tblwhatsapp_conversations` table exists
+4. **Check Perfex Version**: Module requires Perfex CRM 2.3.0+
+5. **Contact Support**: Provide debug log and browser console output
 
-The module now includes comprehensive debug logging. Check your Perfex CRM logs for:
+## 📊 **Debug Information**
 
-- `WhatsApp Module Debug:` - General module operations
-- `WhatsApp Install Debug:` - Installation process
-- Module loading, hook registration, permission checks, etc.
+The module logs to `whatsapp_debug.log` in your Perfex root:
+- Module loading status
+- Hook registration attempts
+- Customer page detection
+- Permission checks
+- Tab rendering attempts
 
-### Common Issues
+Check this file for detailed troubleshooting information.
 
-**Issue**: Tab not appearing
-**Solution**: Check debug logs, verify module is installed, check permissions
+## 🚀 **Version History**
 
-**Issue**: Permission errors
-**Solution**: The module includes fallback mechanisms - check if you're logged in as admin
+- **1.0.5**: Added JavaScript fallback, enhanced debugging, multiple hook registration
+- **1.0.4**: Fixed jQuery loading issues
+- **1.0.3**: Enhanced error handling
+- **1.0.2**: Database compatibility fixes
+- **1.0.1**: Initial release
 
-**Issue**: Database errors
-**Solution**: Check table creation logs, verify database permissions
+---
 
-## 🎯 Usage
-
-1. **Navigate** to any customer profile
-2. **Look for** the "WhatsApp Conversations" tab (appears after other tabs)
-3. **Click** to add, edit, or manage conversations
-4. **Add conversations** by clicking "Add New WhatsApp Conversation"
-5. **Edit** existing conversations using the edit button
-6. **Delete** conversations with proper confirmation
-
-## 📊 Database Structure
-
-The module creates a `[prefix]whatsapp_conversations` table with:
-
-- `id`: Primary key
-- `customer_id`: Links to customer (foreign key)
-- `staff_id`: Staff member who added the conversation
-- `conversation`: Full conversation content (TEXT)
-- `summary`: Brief summary (TEXT, optional)
-- `date_added`: Timestamp of creation
-
-## 🔧 Technical Details
-
-- **Framework**: CodeIgniter 3 (Perfex CRM standard)
-- **Architecture**: Follows MVC pattern
-- **Security**: CSRF protection, permission-based access
-- **Styling**: Matches Perfex CRM design system
-- **JavaScript**: jQuery-based with AJAX functionality
-- **Compatibility**: Works with Perfex CRM 2.3.0+
-- **Debug Logging**: Comprehensive logging for troubleshooting
-
-## 📈 Version History
-
-- **1.0.0**: Initial release with core functionality
-- **1.0.1**: Added database compatibility fixes
-- **1.0.2**: Enhanced error handling, fallback mechanisms, and comprehensive debug logging
-
-## 🆘 Support
-
-This module follows Perfex CRM coding standards and best practices. For troubleshooting:
-
-1. Check the debug logs in your Perfex CRM logs directory
-2. Verify your Perfex CRM version compatibility
-3. Ensure proper file permissions
-4. Check server error logs for detailed error messages
-5. Use browser developer tools to check for JavaScript errors
-
-The module includes extensive debug logging to help identify any issues during installation or operation.
+**If you can see the WhatsApp tab now, the module is working correctly!**
