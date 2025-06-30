@@ -15,13 +15,20 @@ class Whatsapp_conversations_model extends App_Model
      */
     public function get_by_customer($customer_id)
     {
-        $this->db->select('wc.*, CONCAT(s.firstname, " ", s.lastname) as staff_name');
+        // Use a more robust query that handles missing staff data
+        $this->db->select('wc.*, IFNULL(CONCAT(s.firstname, " ", s.lastname), "Unknown Staff") as staff_name');
         $this->db->from(db_prefix() . 'whatsapp_conversations wc');
         $this->db->join(db_prefix() . 'staff s', 's.staffid = wc.staff_id', 'left');
         $this->db->where('wc.customer_id', $customer_id);
         $this->db->order_by('wc.date_added', 'DESC');
         
-        return $this->db->get()->result();
+        $result = $this->db->get();
+        
+        if ($result) {
+            return $result->result();
+        }
+        
+        return array();
     }
 
     /**
@@ -32,7 +39,13 @@ class Whatsapp_conversations_model extends App_Model
     public function get($id)
     {
         $this->db->where('id', $id);
-        return $this->db->get(db_prefix() . 'whatsapp_conversations')->row();
+        $result = $this->db->get(db_prefix() . 'whatsapp_conversations');
+        
+        if ($result) {
+            return $result->row();
+        }
+        
+        return null;
     }
 
     /**

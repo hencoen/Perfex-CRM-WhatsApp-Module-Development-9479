@@ -2,6 +2,16 @@
 
 <div class="row">
     <div class="col-md-12">
+        <!-- Debug Info -->
+        <div class="alert alert-info">
+            <strong>WhatsApp Conversations Module Active</strong><br>
+            Customer ID: <?php echo $customer_id; ?><br>
+            Conversations Found: <?php echo count($conversations); ?><br>
+            Can Create: <?php echo $can_create ? 'Yes' : 'No'; ?><br>
+            Can Edit: <?php echo $can_edit ? 'Yes' : 'No'; ?><br>
+            Can Delete: <?php echo $can_delete ? 'Yes' : 'No'; ?>
+        </div>
+
         <?php if ($can_create) { ?>
             <div class="panel panel-info">
                 <div class="panel-heading">
