@@ -5,36 +5,45 @@
 // Wait for jQuery to be available
 (function() {
     'use strict';
-    
+
     // Function to initialize our module
     function initWhatsAppModule() {
         console.log('WhatsApp Module: Initializing JavaScript');
-        
+
+        // Use whichever jQuery reference is available
+        var jq = window.jQuery || window.$;
+        if (!jq) {
+            console.log('WhatsApp Module: jQuery still not available in main script');
+            return;
+        }
+
         // Handle edit conversation button click
-        $(document).on('click', '.edit-conversation', function(e) {
+        jq(document).on('click', '.edit-conversation', function(e) {
             e.preventDefault();
-            var conversationId = $(this).data('conversation-id');
+            var conversationId = jq(this).data('conversation-id');
             loadConversationForEdit(conversationId);
         });
 
         // Handle save conversation edit
-        $(document).on('click', '#save-conversation-edit', function(e) {
+        jq(document).on('click', '#save-conversation-edit', function(e) {
             e.preventDefault();
             saveConversationEdit();
         });
 
         // Auto-expand textarea on focus
-        $(document).on('focus', 'textarea[name="conversation"], textarea[name="summary"]', function() {
-            $(this).animate({height: '150px'}, 200);
+        jq(document).on('focus', 'textarea[name="conversation"], textarea[name="summary"]', function() {
+            jq(this).animate({
+                height: '150px'
+            }, 200);
         });
 
         // Form validation
-        $('#whatsapp-conversation-form').on('submit', function(e) {
-            var conversation = $.trim($('#conversation').val());
+        jq('#whatsapp-conversation-form').on('submit', function(e) {
+            var conversation = jq.trim(jq('#conversation').val());
             if (conversation === '') {
                 e.preventDefault();
                 alert('Please enter the conversation content.');
-                $('#conversation').focus();
+                jq('#conversation').focus();
                 return false;
             }
         });
@@ -43,7 +52,9 @@
          * Load conversation data for editing
          */
         function loadConversationForEdit(conversationId) {
-            $.get(admin_url + 'whatsapp_conversations/get_conversation/' + conversationId)
+            var adminUrl = window.admin_url || '/admin/';
+            
+            jq.get(adminUrl + 'whatsapp_conversations/get_conversation/' + conversationId)
                 .done(function(response) {
                     try {
                         var data = typeof response === 'string' ? JSON.parse(response) : response;
@@ -51,11 +62,11 @@
                             alert('Error loading conversation: ' + data.error);
                             return;
                         }
-                        
-                        $('#edit_summary').val(data.summary || '');
-                        $('#edit_conversation').val(data.conversation || '');
-                        $('#edit-conversation-form').data('conversation-id', conversationId);
-                        $('#edit-conversation-modal').modal('show');
+
+                        jq('#edit_summary').val(data.summary || '');
+                        jq('#edit_conversation').val(data.conversation || '');
+                        jq('#edit-conversation-form').data('conversation-id', conversationId);
+                        jq('#edit-conversation-modal').modal('show');
                     } catch (e) {
                         alert('Error parsing response data.');
                         console.error('Parse error:', e);
@@ -71,40 +82,42 @@
          * Save conversation edit
          */
         function saveConversationEdit() {
-            var conversationId = $('#edit-conversation-form').data('conversation-id');
-            var summary = $.trim($('#edit_summary').val());
-            var conversation = $.trim($('#edit_conversation').val());
+            var conversationId = jq('#edit-conversation-form').data('conversation-id');
+            var summary = jq.trim(jq('#edit_summary').val());
+            var conversation = jq.trim(jq('#edit_conversation').val());
 
             if (conversation === '') {
                 alert('Please enter the conversation content.');
-                $('#edit_conversation').focus();
+                jq('#edit_conversation').focus();
                 return;
             }
 
             // Show loading state
-            var $saveBtn = $('#save-conversation-edit');
-            var originalText = $saveBtn.html();
-            $saveBtn.html('<i class="fa fa-spinner fa-spin"></i> Saving...').prop('disabled', true);
+            var saveBtn = jq('#save-conversation-edit');
+            var originalText = saveBtn.html();
+            saveBtn.html('<i class="fa fa-spinner fa-spin"></i> Saving...').prop('disabled', true);
 
             // Prepare data object
             var postData = {
                 summary: summary,
                 conversation: conversation
             };
-            
+
             // Add CSRF token if available
             if (typeof csrfData !== 'undefined') {
                 postData[csrfData.token_name] = csrfData.hash;
             }
 
-            $.post(admin_url + 'whatsapp_conversations/edit/' + conversationId, postData)
+            var adminUrl = window.admin_url || '/admin/';
+            
+            jq.post(adminUrl + 'whatsapp_conversations/edit/' + conversationId, postData)
                 .done(function(response) {
                     // Update CSRF token if provided
                     if (typeof(csrfData) !== 'undefined' && response.csrf_hash) {
                         csrfData.hash = response.csrf_hash;
                     }
-                    
-                    $('#edit-conversation-modal').modal('hide');
+
+                    jq('#edit-conversation-modal').modal('hide');
                     // Reload the page to show updated data
                     window.location.reload();
                 })
@@ -114,16 +127,16 @@
                 })
                 .always(function() {
                     // Restore button state
-                    $saveBtn.html(originalText).prop('disabled', false);
+                    saveBtn.html(originalText).prop('disabled', false);
                 });
         }
 
         /**
          * Confirm delete with better UX
          */
-        $(document).on('click', '.delete-conversation', function(e) {
+        jq(document).on('click', '.delete-conversation', function(e) {
             e.preventDefault();
-            var href = $(this).attr('href');
+            var href = jq(this).attr('href');
             if (confirm('Are you sure you want to delete this WhatsApp conversation? This action cannot be undone.')) {
                 window.location.href = href;
             }
@@ -133,9 +146,9 @@
          * Auto-save form data to localStorage (optional feature)
          */
         var formData = {};
-        $('#conversation, #summary').on('input', function() {
-            var fieldName = $(this).attr('name');
-            var fieldValue = $(this).val();
+        jq('#conversation, #summary').on('input', function() {
+            var fieldName = jq(this).attr('name');
+            var fieldValue = jq(this).val();
             formData[fieldName] = fieldValue;
             localStorage.setItem('whatsapp_conversation_draft', JSON.stringify(formData));
         });
@@ -145,11 +158,11 @@
         if (savedDraft) {
             try {
                 var draftData = JSON.parse(savedDraft);
-                if (draftData.conversation && $('#conversation').val() === '') {
-                    $('#conversation').val(draftData.conversation);
+                if (draftData.conversation && jq('#conversation').val() === '') {
+                    jq('#conversation').val(draftData.conversation);
                 }
-                if (draftData.summary && $('#summary').val() === '') {
-                    $('#summary').val(draftData.summary);
+                if (draftData.summary && jq('#summary').val() === '') {
+                    jq('#summary').val(draftData.summary);
                 }
             } catch (e) {
                 // Clear invalid draft data
@@ -158,7 +171,7 @@
         }
 
         // Clear draft after successful form submission
-        $('#whatsapp-conversation-form').on('submit', function() {
+        jq('#whatsapp-conversation-form').on('submit', function() {
             localStorage.removeItem('whatsapp_conversation_draft');
         });
 
@@ -166,23 +179,19 @@
     }
 
     // Check if jQuery is available and initialize
-    function checkJQuery() {
-        if (typeof jQuery !== 'undefined') {
-            console.log('WhatsApp Module: jQuery found, initializing');
-            jQuery(document).ready(function($) {
-                initWhatsAppModule();
-            });
-        } else if (typeof $ !== 'undefined') {
-            console.log('WhatsApp Module: $ found, initializing');
-            $(document).ready(function() {
+    function checkjQuery() {
+        if (window.jQuery || window.$) {
+            console.log('WhatsApp Module: jQuery found, initializing main script');
+            var jq = window.jQuery || window.$;
+            jq(document).ready(function() {
                 initWhatsAppModule();
             });
         } else {
-            console.log('WhatsApp Module: jQuery not found, retrying in 100ms');
-            setTimeout(checkJQuery, 100);
+            console.log('WhatsApp Module: jQuery not found in main script, retrying in 100ms');
+            setTimeout(checkjQuery, 100);
         }
     }
 
     // Start checking for jQuery
-    checkJQuery();
+    checkjQuery();
 })();

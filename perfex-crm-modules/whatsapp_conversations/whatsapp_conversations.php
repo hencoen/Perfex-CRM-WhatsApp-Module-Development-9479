@@ -4,7 +4,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 /*
 Module Name: WhatsApp Conversations
 Description: Manage WhatsApp conversations for customers
-Version: 1.0.7
+Version: 1.0.8
 Author: Custom Module
 Requires at least: 2.3.*
 */
@@ -185,97 +185,130 @@ function whatsapp_conversations_add_head_components()
         
         echo '<link href="' . module_dir_url(WHATSAPP_CONVERSATIONS_MODULE_NAME, 'assets/css/whatsapp_conversations.css') . '" rel="stylesheet" type="text/css" />';
         
-        // Enhanced JavaScript that loads actual content
+        // Enhanced JavaScript with proper jQuery handling
         echo '<script>
-            var whatsAppCustomerId = ' . $customer_id . ';
-            console.log("WhatsApp Module: Customer ID detected:", whatsAppCustomerId);
-            
-            function loadWhatsAppContent() {
-                if (whatsAppCustomerId > 0) {
-                    // Load actual content via AJAX
-                    var contentUrl = "' . admin_url('whatsapp_conversations/get_tab_content/') . '" + whatsAppCustomerId;
-                    
-                    $.get(contentUrl)
-                        .done(function(response) {
-                            console.log("WhatsApp Module: Content loaded successfully");
-                            $("#whatsapp_conversations").html(response);
-                        })
-                        .fail(function() {
-                            console.log("WhatsApp Module: Using fallback content");
-                            $("#whatsapp_conversations").html(`
-                                <div class="row">
-                                    <div class="col-md-12">
-                                        <div class="alert alert-info">
-                                            <h4><i class="fa fa-whatsapp"></i> WhatsApp Conversations</h4>
-                                            <p>WhatsApp conversation management for this customer.</p>
-                                            <p><small>Customer ID: ${whatsAppCustomerId}</small></p>
-                                        </div>
+            (function() {
+                "use strict";
+                
+                var whatsAppCustomerId = ' . $customer_id . ';
+                console.log("WhatsApp Module: Customer ID detected:", whatsAppCustomerId);
+                
+                function loadWhatsAppContent() {
+                    if (whatsAppCustomerId > 0) {
+                        // Use jQuery OR $ - whichever is available
+                        var jq = window.jQuery || window.$;
+                        if (!jq) {
+                            console.log("WhatsApp Module: jQuery not available for AJAX");
+                            showFallbackContent();
+                            return;
+                        }
+                        
+                        // Load actual content via AJAX
+                        var contentUrl = "' . admin_url('whatsapp_conversations/get_tab_content/') . '" + whatsAppCustomerId;
+                        
+                        jq.get(contentUrl)
+                            .done(function(response) {
+                                console.log("WhatsApp Module: Content loaded successfully");
+                                jq("#whatsapp_conversations").html(response);
+                            })
+                            .fail(function() {
+                                console.log("WhatsApp Module: AJAX failed, using fallback content");
+                                showFallbackContent();
+                            });
+                    } else {
+                        showFallbackContent();
+                    }
+                }
+                
+                function showFallbackContent() {
+                    var jq = window.jQuery || window.$;
+                    if (jq) {
+                        jq("#whatsapp_conversations").html(`
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="alert alert-info">
+                                        <h4><i class="fa fa-whatsapp"></i> WhatsApp Conversations</h4>
+                                        <p>WhatsApp conversation management for this customer.</p>
+                                        <p><small>Customer ID: ${whatsAppCustomerId || "Unknown"}</small></p>
+                                        <p><small>Module loaded via JavaScript fallback</small></p>
                                     </div>
                                 </div>
-                            `);
-                        });
-                } else {
-                    $("#whatsapp_conversations").html(`
-                        <div class="alert alert-warning">
-                            <h4>WhatsApp Conversations</h4>
-                            <p>Could not determine customer ID.</p>
+                            </div>
+                        `);
+                    }
+                }
+                
+                function addWhatsAppTab() {
+                    console.log("WhatsApp Module: Adding tab and content");
+                    
+                    // Use jQuery OR $ - whichever is available
+                    var jq = window.jQuery || window.$;
+                    if (!jq) {
+                        console.log("WhatsApp Module: jQuery not available, retrying...");
+                        setTimeout(addWhatsAppTab, 500);
+                        return;
+                    }
+                    
+                    // Find tab container
+                    var tabContainer = jq(".nav-tabs").first();
+                    if (tabContainer.length === 0) {
+                        console.log("WhatsApp Module: No tab container found, retrying...");
+                        setTimeout(addWhatsAppTab, 500);
+                        return;
+                    }
+                    
+                    // Find content container  
+                    var contentContainer = jq(".tab-content").first();
+                    if (contentContainer.length === 0) {
+                        console.log("WhatsApp Module: No content container found");
+                        return;
+                    }
+                    
+                    // Check if tab already exists
+                    if (tabContainer.find("a[href=\\"#whatsapp_conversations\\"]").length > 0) {
+                        console.log("WhatsApp Module: Tab already exists");
+                        return;
+                    }
+                    
+                    // Add tab
+                    tabContainer.append(`
+                        <li role="presentation">
+                            <a href="#whatsapp_conversations" aria-controls="whatsapp_conversations" role="tab" data-toggle="tab">
+                                <i class="fa fa-whatsapp" aria-hidden="true"></i> 
+                                WhatsApp Conversations
+                            </a>
+                        </li>
+                    `);
+                    
+                    // Add content
+                    contentContainer.append(`
+                        <div role="tabpanel" class="tab-pane" id="whatsapp_conversations">
+                            <div class="text-center" style="padding: 20px;">
+                                <i class="fa fa-spinner fa-spin"></i> Loading...
+                            </div>
                         </div>
                     `);
-                }
-            }
-            
-            function addWhatsAppTab() {
-                console.log("WhatsApp Module: Adding tab and content");
-                
-                // Find tab container
-                var $tabContainer = $(".nav-tabs").first();
-                if ($tabContainer.length === 0) {
-                    console.log("WhatsApp Module: No tab container found");
-                    return;
+                    
+                    console.log("WhatsApp Module: Tab and content added successfully");
+                    
+                    // Load content after a short delay
+                    setTimeout(loadWhatsAppContent, 500);
                 }
                 
-                // Find content container  
-                var $contentContainer = $(".tab-content").first();
-                if ($contentContainer.length === 0) {
-                    console.log("WhatsApp Module: No content container found");
-                    return;
+                function waitForjQuery() {
+                    if (window.jQuery || window.$) {
+                        console.log("WhatsApp Module: jQuery found, initializing");
+                        // Wait a bit more for DOM to be ready
+                        setTimeout(addWhatsAppTab, 1000);
+                    } else {
+                        console.log("WhatsApp Module: Waiting for jQuery...");
+                        setTimeout(waitForjQuery, 100);
+                    }
                 }
                 
-                // Check if tab already exists
-                if ($tabContainer.find(\'a[href="#whatsapp_conversations"]\').length > 0) {
-                    console.log("WhatsApp Module: Tab already exists");
-                    return;
-                }
-                
-                // Add tab
-                $tabContainer.append(`
-                    <li role="presentation">
-                        <a href="#whatsapp_conversations" aria-controls="whatsapp_conversations" role="tab" data-toggle="tab">
-                            <i class="fa fa-whatsapp" aria-hidden="true"></i> 
-                            WhatsApp Conversations
-                        </a>
-                    </li>
-                `);
-                
-                // Add content
-                $contentContainer.append(`
-                    <div role="tabpanel" class="tab-pane" id="whatsapp_conversations">
-                        <div class="text-center" style="padding: 20px;">
-                            <i class="fa fa-spinner fa-spin"></i> Loading...
-                        </div>
-                    </div>
-                `);
-                
-                console.log("WhatsApp Module: Tab and content added successfully");
-                
-                // Load content after a short delay
-                setTimeout(loadWhatsAppContent, 500);
-            }
-            
-            // Initialize when DOM is ready
-            $(document).ready(function() {
-                setTimeout(addWhatsAppTab, 1000);
-            });
+                // Start waiting for jQuery
+                waitForjQuery();
+            })();
         </script>';
         
         // Load the main JavaScript file
